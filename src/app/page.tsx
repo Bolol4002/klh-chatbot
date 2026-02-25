@@ -1,9 +1,127 @@
 'use client';
 
 import { useState } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Download, ArrowLeft } from 'lucide-react';
 
 type Msg = { role: 'user' | 'bot'; content: string };
+
+type CourseItem = {
+  key: string;
+  name: { en: string; te: string; hi: string };
+  description: { en: string; te: string; hi: string };
+  brochureUrl: string;
+};
+
+type CourseSubcategory = {
+  key: string;
+  label: { en: string; te: string; hi: string };
+  courses: CourseItem[];
+};
+
+const COURSE_DATA: CourseSubcategory[] = [
+  {
+    key: 'ug-courses',
+    label: { en: 'UG Courses', te: 'UG కోర్సులు', hi: 'UG कोर्स' },
+    courses: [
+      {
+        key: 'btech-ece',
+        name: { en: 'B.Tech in ECE', te: 'B.Tech ECE', hi: 'B.Tech ECE' },
+        description: {
+          en: 'Bachelor of Technology in Electronics and Communication Engineering (ECE) is a 4-year undergraduate program focusing on electronic devices, circuits, communication systems, signal processing, and embedded systems. Students gain hands-on experience with modern labs and industry-relevant projects.',
+          te: 'ఎలక్ట్రానిక్స్ అండ్ కమ్యూనికేషన్ ఇంజినీరింగ్ (ECE) లో బ్యాచిలర్ ఆఫ్ టెక్నాలజీ అనేది ఎలక్ట్రానిక్ పరికరాలు, సర్క్యూట్లు, కమ్యూనికేషన్ సిస్టమ్స్, సిగ్నల్ ప్రాసెసింగ్ మరియు ఎంబెడెడ్ సిస్టమ్స్‌పై దృష్టి సారించే 4 సంవత్సరాల అండర్‌గ్రాడ్యుయేట్ ప్రోగ్రామ్.',
+          hi: 'इलेक्ट्रॉनिक्स एंड कम्युनिकेशन इंजीनियरिंग (ECE) में बैचलर ऑफ टेक्नोलॉजी एक 4 वर्षीय स्नातक कार्यक्रम है जो इलेक्ट्रॉनिक उपकरणों, सर्किट, संचार प्रणालियों, सिग्नल प्रोसेसिंग और एम्बेडेड सिस्टम पर केंद्रित है।',
+        },
+        brochureUrl: '/brochures/btech-ece.pdf',
+      },
+      {
+        key: 'btech-cse',
+        name: { en: 'B.Tech in CSE', te: 'B.Tech CSE', hi: 'B.Tech CSE' },
+        description: {
+          en: 'Bachelor of Technology in Computer Science and Engineering (CSE) is a 4-year undergraduate program covering programming, algorithms, data structures, databases, software engineering, and emerging technologies like AI and cloud computing.',
+          te: 'కంప్యూటర్ సైన్స్ అండ్ ఇంజినీరింగ్ (CSE) లో బ్యాచిలర్ ఆఫ్ టెక్నాలజీ అనేది ప్రోగ్రామింగ్, అల్గారిథమ్స్, డేటా స్ట్రక్చర్స్, డేటాబేస్‌లు, సాఫ్ట్‌వేర్ ఇంజినీరింగ్ మరియు AI, క్లౌడ్ కంప్యూటింగ్ వంటి ఆధునిక టెక్నాలజీలను కవర్ చేసే 4 సంవత్సరాల ప్రోగ్రామ్.',
+          hi: 'कंप्यूटर साइंस एंड इंजीनियरिंग (CSE) में बैचलर ऑफ टेक्नोलॉजी एक 4 वर्षीय कार्यक्रम है जो प्रोग्रामिंग, एल्गोरिदम, डेटा स्ट्रक्चर, डेटाबेस, सॉफ्टवेयर इंजीनियरिंग और AI जैसी उभरती तकनीकों को कवर करता है।',
+        },
+        brochureUrl: '/brochures/btech-cse.pdf',
+      },
+      {
+        key: 'btech-aids',
+        name: { en: 'B.Tech in AI & DS', te: 'B.Tech AI & DS', hi: 'B.Tech AI & DS' },
+        description: {
+          en: 'Bachelor of Technology in Artificial Intelligence and Data Science (AI & DS) is a 4-year program designed for students interested in machine learning, deep learning, big data analytics, and intelligent systems. Includes hands-on projects with real-world datasets.',
+          te: 'ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ అండ్ డేటా సైన్స్ (AI & DS) లో బ్యాచిలర్ ఆఫ్ టెక్నాలజీ అనేది మెషిన్ లెర్నింగ్, డీప్ లెర్నింగ్, బిగ్ డేటా అనలిటిక్స్ మరియు ఇంటెలిజెంట్ సిస్టమ్స్‌పై ఆసక్తి ఉన్న విద్యార్థుల కోసం రూపొందించబడిన 4 సంవత్సరాల ప్రోగ్రామ్.',
+          hi: 'आर्टिफिशियल इंटेलिजेंस एंड डेटा साइंस (AI & DS) में बैचलर ऑफ टेक्नोलॉजी मशीन लर्निंग, डीप लर्निंग, बिग डेटा एनालिटिक्स और इंटेलिजेंट सिस्टम में रुचि रखने वाले छात्रों के लिए 4 वर्षीय कार्यक्रम है।',
+        },
+        brochureUrl: '/brochures/btech-aids.pdf',
+      },
+    ],
+  },
+  {
+    key: 'certifications',
+    label: { en: 'Certifications', te: 'సర్టిఫికేషన్లు', hi: 'सर्टिफिकेशन' },
+    courses: [
+      {
+        key: 'aws',
+        name: { en: 'AWS Certification', te: 'AWS సర్టిఫికేషన్', hi: 'AWS सर्टिफिकेशन' },
+        description: {
+          en: 'Amazon Web Services (AWS) certification program covers cloud computing fundamentals, AWS core services, architecture best practices, security, and deployment. Prepares students for AWS Cloud Practitioner and Solutions Architect certifications.',
+          te: 'అమెజాన్ వెబ్ సర్వీసెస్ (AWS) సర్టిఫికేషన్ ప్రోగ్రామ్ క్లౌడ్ కంప్యూటింగ్ ఫండమెంటల్స్, AWS కోర్ సర్వీసులు, ఆర్కిటెక్చర్ బెస్ట్ ప్రాక్టీసెస్, సెక్యూరిటీ మరియు డిప్లాయ్‌మెంట్‌ను కవర్ చేస్తుంది.',
+          hi: 'अमेज़न वेब सर्विसेज (AWS) सर्टिफिकेशन प्रोग्राम क्लाउड कंप्यूटिंग फंडामेंटल्स, AWS कोर सर्विसेज, आर्किटेक्चर बेस्ट प्रैक्टिसेज, सिक्योरिटी और डिप्लॉयमेंट को कवर करता है।',
+        },
+        brochureUrl: '/brochures/aws-certification.pdf',
+      },
+      {
+        key: 'redhat',
+        name: { en: 'Red Hat Certification', te: 'Red Hat సర్టిఫికేషన్', hi: 'Red Hat सर्टिफिकेशन' },
+        description: {
+          en: 'Red Hat certification program provides training in Linux system administration, enterprise solutions, containerization with OpenShift, and DevOps practices. Prepares students for RHCSA and RHCE certifications.',
+          te: 'Red Hat సర్టిఫికేషన్ ప్రోగ్రామ్ Linux సిస్టమ్ అడ్మినిస్ట్రేషన్, ఎంటర్‌ప్రైజ్ సొల్యూషన్స్, OpenShift తో కంటైనరైజేషన్ మరియు DevOps ప్రాక్టీసెస్‌లో శిక్షణ అందిస్తుంది.',
+          hi: 'Red Hat सर्टिफिकेशन प्रोग्राम Linux सिस्टम एडमिनिस्ट्रेशन, एंटरप्राइज सॉल्यूशंस, OpenShift के साथ कंटेनराइजेशन और DevOps प्रैक्टिसेज में प्रशिक्षण प्रदान करता है।',
+        },
+        brochureUrl: '/brochures/redhat-certification.pdf',
+      },
+      {
+        key: 'mongodb',
+        name: { en: 'MongoDB Certification', te: 'MongoDB సర్టిఫికేషన్', hi: 'MongoDB सर्टिफिकेशन' },
+        description: {
+          en: 'MongoDB certification program covers NoSQL database concepts, document-oriented data modeling, CRUD operations, aggregation framework, indexing, and MongoDB Atlas cloud deployment.',
+          te: 'MongoDB సర్టిఫికేషన్ ప్రోగ్రామ్ NoSQL డేటాబేస్ కాన్సెప్ట్‌లు, డాక్యుమెంట్-ఓరియెంటెడ్ డేటా మోడలింగ్, CRUD ఆపరేషన్లు, అగ్రిగేషన్ ఫ్రేమ్‌వర్క్, ఇండెక్సింగ్ మరియు MongoDB Atlas క్లౌడ్ డిప్లాయ్‌మెంట్‌ను కవర్ చేస్తుంది.',
+          hi: 'MongoDB सर्टिफिकेशन प्रोग्राम NoSQL डेटाबेस कॉन्सेप्ट्स, डॉक्यूमेंट-ओरिएंटेड डेटा मॉडलिंग, CRUD ऑपरेशंस, एग्रीगेशन फ्रेमवर्क, इंडेक्सिंग और MongoDB Atlas क्लाउड डिप्लॉयमेंट को कवर करता है।',
+        },
+        brochureUrl: '/brochures/mongodb-certification.pdf',
+      },
+      {
+        key: 'tessolve-vlsi',
+        name: { en: 'Tessolve - VLSI', te: 'Tessolve - VLSI', hi: 'Tessolve - VLSI' },
+        description: {
+          en: 'Tessolve VLSI certification program covers semiconductor design, RTL coding, verification methodologies, ASIC/FPGA design flow, timing analysis, and physical design concepts. Industry-partnered program with hands-on project experience.',
+          te: 'Tessolve VLSI సర్టిఫికేషన్ ప్రోగ్రామ్ సెమీకండక్టర్ డిజైన్, RTL కోడింగ్, వెరిఫికేషన్ మెథడాలజీలు, ASIC/FPGA డిజైన్ ఫ్లో, టైమింగ్ అనాలిసిస్ మరియు ఫిజికల్ డిజైన్ కాన్సెప్ట్‌లను కవర్ చేస్తుంది.',
+          hi: 'Tessolve VLSI सर्टिफिकेशन प्रोग्राम सेमीकंडक्टर डिजाइन, RTL कोडिंग, वेरिफिकेशन मेथडोलॉजीज, ASIC/FPGA डिजाइन फ्लो, टाइमिंग एनालिसिस और फिजिकल डिजाइन कॉन्सेप्ट्स को कवर करता है।',
+        },
+        brochureUrl: '/brochures/tessolve-vlsi.pdf',
+      },
+      {
+        key: 'tessolve-embedded',
+        name: { en: 'Tessolve - Embedded Systems', te: 'Tessolve - ఎంబెడెడ్ సిస్టమ్స్', hi: 'Tessolve - एम्बेडेड सिस्टम' },
+        description: {
+          en: 'Tessolve Embedded Systems certification covers microcontroller programming, RTOS concepts, peripheral interfacing, firmware development, and IoT applications. Includes real-time project work with industry-standard development boards.',
+          te: 'Tessolve ఎంబెడెడ్ సిస్టమ్స్ సర్టిఫికేషన్ మైక్రోకంట్రోలర్ ప్రోగ్రామింగ్, RTOS కాన్సెప్ట్‌లు, పెరిఫెరల్ ఇంటర్‌ఫేసింగ్, ఫర్మ్‌వేర్ డెవలప్‌మెంట్ మరియు IoT అప్లికేషన్‌లను కవర్ చేస్తుంది.',
+          hi: 'Tessolve एम्बेडेड सिस्टम सर्टिफिकेशन माइक्रोकंट्रोलर प्रोग्रामिंग, RTOS कॉन्सेप्ट्स, पेरिफेरल इंटरफेसिंग, फर्मवेयर डेवलपमेंट और IoT एप्लिकेशंस को कवर करता है।',
+        },
+        brochureUrl: '/brochures/tessolve-embedded.pdf',
+      },
+      {
+        key: 'rpa',
+        name: { en: 'RPA Certification', te: 'RPA సర్టిఫికేషన్', hi: 'RPA सर्टिफिकेशन' },
+        description: {
+          en: 'Robotic Process Automation (RPA) certification covers process automation fundamentals, bot development using UiPath/Automation Anywhere, workflow design, exception handling, and enterprise automation strategies.',
+          te: 'రోబోటిక్ ప్రాసెస్ ఆటోమేషన్ (RPA) సర్టిఫికేషన్ ప్రాసెస్ ఆటోమేషన్ ఫండమెంటల్స్, UiPath/Automation Anywhere ఉపయోగించి బాట్ డెవలప్‌మెంట్, వర్క్‌ఫ్లో డిజైన్, ఎక్సెప్షన్ హ్యాండ్లింగ్ మరియు ఎంటర్‌ప్రైజ్ ఆటోమేషన్ స్ట్రాటజీలను కవర్ చేస్తుంది.',
+          hi: 'रोबोटिक प्रोसेस ऑटोमेशन (RPA) सर्टिफिकेशन प्रोसेस ऑटोमेशन फंडामेंटल्स, UiPath/Automation Anywhere का उपयोग करके बॉट डेवलपमेंट, वर्कफ्लो डिजाइन, एक्सेप्शन हैंडलिंग और एंटरप्राइज ऑटोमेशन स्ट्रैटेजीज को कवर करता है।',
+        },
+        brochureUrl: '/brochures/rpa-certification.pdf',
+      },
+    ],
+  },
+];
 
 const FAQ_CATEGORIES = [
   {
@@ -41,38 +159,14 @@ const FAQ_CATEGORIES = [
     ],
   },
   {
-    key: 'courses',
+    key: 'browse-courses',
     labels: {
-      en: 'Courses & Branches',
-      te: 'కోర్సులు & బ్రాంచులు',
-      hi: 'कोर्स और ब्रांच',
+      en: 'Browse Courses',
+      te: 'కోర్సులు చూడండి',
+      hi: 'कोर्स देखें',
     },
-    questions: [
-      {
-        key: 'branches-available',
-        en: 'What branches are available at KLH Hyderabad?',
-        te: 'KLH హైదరాబాద్‌లో ఏ బ్రాంచులు ఉన్నాయి?',
-        hi: 'KLH हैदराबाद में कौन-कौन सी ब्रांच उपलब्ध हैं?',
-      },
-      {
-        key: 'aiml-ds',
-        en: 'Do you have AI/ML or Data Science programs?',
-        te: 'AI/ML లేదా డేటా సైన్స్ ప్రోగ్రాములు ఉన్నాయా?',
-        hi: 'क्या आपके पास AI/ML या डेटा साइंस प्रोग्राम हैं?',
-      },
-      {
-        key: 'ece-available',
-        en: 'Is ECE available at KLH Hyderabad campus?',
-        te: 'KLH హైదరాబాద్ క్యాంపస్‌లో ECE ఉందా?',
-        hi: 'क्या KLH हैदराबाद कैंपस में ECE उपलब्ध है?',
-      },
-      {
-        key: 'integrated-honors',
-        en: 'Are there any integrated or honors programs?',
-        te: 'ఏమైనా ఇంటిగ్రేటెడ్ లేదా ఆనర్స్ ప్రోగ్రామ్‌లు ఉన్నాయా?',
-        hi: 'क्या कोई इंटीग्रेटेड या ऑनर्स प्रोग्राम हैं?',
-      },
-    ],
+    isBrowseCourses: true,
+    questions: [],
   },
   {
     key: 'fees',
@@ -220,6 +314,8 @@ export default function Home() {
   const [isOpen, setIsOpen] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [language, setLanguage] = useState<'en' | 'te' | 'hi'>('en');
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
 
   const sendMessageWithText = async (text: string) => {
     const userMsg: Msg = { role: 'user', content: text };
@@ -320,7 +416,11 @@ export default function Home() {
                     {FAQ_CATEGORIES.map(cat => (
                       <button
                         key={cat.key}
-                        onClick={() => setSelectedCategory(cat.key)}
+                        onClick={() => {
+                          setSelectedCategory(cat.key);
+                          setSelectedSubcategory(null);
+                          setSelectedCourse(null);
+                        }}
                         className="text-xs px-3 py-1 rounded-full bg-white border border-gray-300 hover:bg-blue-50 text-gray-800"
                       >
                         {cat.labels[language]}
@@ -330,8 +430,100 @@ export default function Home() {
                 </div>
               )}
 
-              {/* step 2: questions in selected category */}
-              {selectedCategory && (
+              {/* Browse Courses Flow */}
+              {selectedCategory === 'browse-courses' && (
+                <div>
+                  {/* Back button */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <button
+                      onClick={() => {
+                        if (selectedCourse) {
+                          setSelectedCourse(null);
+                        } else if (selectedSubcategory) {
+                          setSelectedSubcategory(null);
+                        } else {
+                          setSelectedCategory(null);
+                        }
+                      }}
+                      className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700"
+                    >
+                      <ArrowLeft size={14} />
+                      Back
+                    </button>
+                    <p className="text-xs font-semibold text-gray-500">
+                      {selectedCourse
+                        ? (() => {
+                            const subcat = COURSE_DATA.find(s => s.key === selectedSubcategory);
+                            const course = subcat?.courses.find(c => c.key === selectedCourse);
+                            return course?.name[language] || '';
+                          })()
+                        : selectedSubcategory
+                        ? COURSE_DATA.find(s => s.key === selectedSubcategory)?.label[language]
+                        : 'Browse Courses'}
+                    </p>
+                  </div>
+
+                  {/* Step 1: Show subcategories (UG Courses / Certifications) */}
+                  {!selectedSubcategory && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {COURSE_DATA.map(subcat => (
+                        <button
+                          key={subcat.key}
+                          onClick={() => setSelectedSubcategory(subcat.key)}
+                          className="text-xs px-3 py-1 rounded-full bg-white border border-gray-300 hover:bg-blue-50 text-gray-800"
+                        >
+                          {subcat.label[language]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Step 2: Show courses in selected subcategory */}
+                  {selectedSubcategory && !selectedCourse && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {COURSE_DATA.find(s => s.key === selectedSubcategory)?.courses.map(course => (
+                        <button
+                          key={course.key}
+                          onClick={() => setSelectedCourse(course.key)}
+                          className="text-xs px-3 py-1 rounded-full bg-white border border-gray-300 hover:bg-blue-50 text-gray-800"
+                        >
+                          {course.name[language]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Step 3: Show course details with download brochure button */}
+                  {selectedCourse && (
+                    <div className="bg-white rounded-lg p-3 border border-gray-200">
+                      {(() => {
+                        const subcat = COURSE_DATA.find(s => s.key === selectedSubcategory);
+                        const course = subcat?.courses.find(c => c.key === selectedCourse);
+                        if (!course) return null;
+
+                        return (
+                          <>
+                            <p className="text-sm text-gray-700 mb-3 leading-relaxed">
+                              {course.description[language]}
+                            </p>
+                            <a
+                              href={course.brochureUrl}
+                              download
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors"
+                            >
+                              <Download size={14} />
+                              Download Brochure
+                            </a>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* step 2: questions in selected category (for non-browse-courses categories) */}
+              {selectedCategory && selectedCategory !== 'browse-courses' && (
                 <div>
                   {(() => {
                     const cat = FAQ_CATEGORIES.find(c => c.key === selectedCategory);
