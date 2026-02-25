@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Send, Download, ArrowLeft } from 'lucide-react';
+import { Send, Download, ArrowLeft, Moon, Sun } from 'lucide-react';
 
 type Msg = { role: 'user' | 'bot'; content: string };
 
@@ -316,6 +316,7 @@ export default function Home() {
   const [language, setLanguage] = useState<'en' | 'te' | 'hi'>('en');
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
+  const [darkMode, setDarkMode] = useState(false);
 
   const sendMessageWithText = async (text: string) => {
     const userMsg: Msg = { role: 'user', content: text };
@@ -349,41 +350,67 @@ export default function Home() {
     <>
       <button
         onClick={() => setIsOpen(o => !o)}
-        className="fixed bottom-4 right-4 w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-lg z-50 text-sm font-semibold"
+        className="fixed bottom-4 right-4 w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg z-50 text-sm font-semibold hover:bg-red-700 transition-colors"
       >
         KL
       </button>
 
       {isOpen && (
-        <div className="fixed bottom-20 right-4 w-full max-w-md bg-white rounded-2xl shadow-xl p-4 space-y-3 border border-gray-200 z-40">
-          <h1 className="text-xl font-semibold text-center text-gray-800">
-            KLH Website Chatbot (Demo)
-          </h1>
+        <div className={`fixed bottom-20 right-4 w-full max-w-md rounded-2xl shadow-xl p-4 space-y-3 border z-40 transition-colors duration-300 ${
+          darkMode 
+            ? 'bg-gray-900 border-gray-700' 
+            : 'bg-white border-gray-200'
+        }`}>
+          {/* Header with title and dark mode toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex-1" />
+            <h1 className={`text-xl font-semibold text-center flex-1 ${
+              darkMode ? 'text-white' : 'text-gray-800'
+            }`}>
+              KLH Chatbot
+            </h1>
+            <div className="flex-1 flex justify-end">
+              <button
+                onClick={() => setDarkMode(d => !d)}
+                className={`p-2 rounded-full transition-colors ${
+                  darkMode 
+                    ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+                title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+            </div>
+          </div>
+          
           <div className="flex justify-center gap-2 text-xs mb-1">
             <button
               onClick={() => setLanguage('en')}
-              className={language === 'en' ? 'font-semibold text-blue-600' : 'text-gray-500'}
+              className={language === 'en' ? 'font-semibold text-red-600' : darkMode ? 'text-gray-400' : 'text-gray-500'}
             >
               English
             </button>
-            <span className="text-gray-300">|</span>
+            <span className={darkMode ? 'text-gray-600' : 'text-gray-300'}>|</span>
             <button
               onClick={() => setLanguage('te')}
-              className={language === 'te' ? 'font-semibold text-blue-600' : 'text-gray-500'}
+              className={language === 'te' ? 'font-semibold text-red-600' : darkMode ? 'text-gray-400' : 'text-gray-500'}
             >
               తెలుగు
             </button>
-            <span className="text-gray-300">|</span>
+            <span className={darkMode ? 'text-gray-600' : 'text-gray-300'}>|</span>
             <button
               onClick={() => setLanguage('hi')}
-              className={language === 'hi' ? 'font-semibold text-blue-600' : 'text-gray-500'}
+              className={language === 'hi' ? 'font-semibold text-red-600' : darkMode ? 'text-gray-400' : 'text-gray-500'}
             >
               हिन्दी
             </button>
           </div>
 
 
-          <div className="h-80 overflow-y-auto space-y-3 p-2 bg-gray-50 rounded-xl">
+          <div className={`h-80 overflow-y-auto space-y-3 p-2 rounded-xl transition-colors duration-300 ${
+            darkMode ? 'bg-gray-800' : 'bg-gray-50'
+          }`}>
             {/* messages */}
             {messages.map((msg, i) => (
               <div
@@ -395,8 +422,10 @@ export default function Home() {
                 <div
                   className={`max-w-xs px-3 py-2 rounded-2xl text-sm ${
                     msg.role === 'user'
-                      ? 'bg-blue-500 text-white rounded-br-none'
-                      : 'bg-gray-200 text-gray-900 rounded-bl-none'
+                      ? 'bg-red-600 text-white rounded-br-none'
+                      : darkMode 
+                        ? 'bg-gray-700 text-gray-100 rounded-bl-none'
+                        : 'bg-gray-200 text-gray-900 rounded-bl-none'
                   }`}
                 >
                   {msg.content}
@@ -409,7 +438,7 @@ export default function Home() {
               {/* step 1: category chips */}
               {!selectedCategory && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 mb-1">
+                  <p className={`text-xs font-semibold mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                     Choose a category
                   </p>
                   <div className="flex flex-wrap gap-2 mb-2">
@@ -421,7 +450,11 @@ export default function Home() {
                           setSelectedSubcategory(null);
                           setSelectedCourse(null);
                         }}
-                        className="text-xs px-3 py-1 rounded-full bg-white border border-gray-300 hover:bg-blue-50 text-gray-800"
+                        className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                          darkMode 
+                            ? 'bg-gray-700 border-gray-600 hover:bg-red-900 hover:border-red-700 text-gray-200' 
+                            : 'bg-white border-gray-300 hover:bg-red-50 hover:border-red-300 text-gray-800'
+                        }`}
                       >
                         {cat.labels[language]}
                       </button>
@@ -445,12 +478,12 @@ export default function Home() {
                           setSelectedCategory(null);
                         }
                       }}
-                      className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700"
+                      className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700"
                     >
                       <ArrowLeft size={14} />
                       Back
                     </button>
-                    <p className="text-xs font-semibold text-gray-500">
+                    <p className={`text-xs font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                       {selectedCourse
                         ? (() => {
                             const subcat = COURSE_DATA.find(s => s.key === selectedSubcategory);
@@ -470,7 +503,11 @@ export default function Home() {
                         <button
                           key={subcat.key}
                           onClick={() => setSelectedSubcategory(subcat.key)}
-                          className="text-xs px-3 py-1 rounded-full bg-white border border-gray-300 hover:bg-blue-50 text-gray-800"
+                          className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                            darkMode 
+                              ? 'bg-gray-700 border-gray-600 hover:bg-red-900 hover:border-red-700 text-gray-200' 
+                              : 'bg-white border-gray-300 hover:bg-red-50 hover:border-red-300 text-gray-800'
+                          }`}
                         >
                           {subcat.label[language]}
                         </button>
@@ -485,7 +522,11 @@ export default function Home() {
                         <button
                           key={course.key}
                           onClick={() => setSelectedCourse(course.key)}
-                          className="text-xs px-3 py-1 rounded-full bg-white border border-gray-300 hover:bg-blue-50 text-gray-800"
+                          className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                            darkMode 
+                              ? 'bg-gray-700 border-gray-600 hover:bg-red-900 hover:border-red-700 text-gray-200' 
+                              : 'bg-white border-gray-300 hover:bg-red-50 hover:border-red-300 text-gray-800'
+                          }`}
                         >
                           {course.name[language]}
                         </button>
@@ -495,7 +536,9 @@ export default function Home() {
 
                   {/* Step 3: Show course details with download brochure button */}
                   {selectedCourse && (
-                    <div className="bg-white rounded-lg p-3 border border-gray-200">
+                    <div className={`rounded-lg p-3 border transition-colors ${
+                      darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
+                    }`}>
                       {(() => {
                         const subcat = COURSE_DATA.find(s => s.key === selectedSubcategory);
                         const course = subcat?.courses.find(c => c.key === selectedCourse);
@@ -503,13 +546,15 @@ export default function Home() {
 
                         return (
                           <>
-                            <p className="text-sm text-gray-700 mb-3 leading-relaxed">
+                            <p className={`text-sm mb-3 leading-relaxed ${
+                              darkMode ? 'text-gray-200' : 'text-gray-700'
+                            }`}>
                               {course.description[language]}
                             </p>
                             <a
                               href={course.brochureUrl}
                               download
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors"
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-xs rounded-lg hover:bg-red-700 transition-colors"
                             >
                               <Download size={14} />
                               Download Brochure
@@ -532,12 +577,12 @@ export default function Home() {
                     return (
                       <>
                         <div className="flex items-center justify-between mb-1">
-                          <p className="text-xs font-semibold text-gray-500">
+                          <p className={`text-xs font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                             {cat.labels[language]}
                           </p>
                           <button
                             onClick={() => setSelectedCategory(null)}
-                            className="text-[10px] text-blue-500 underline"
+                            className="text-[10px] text-red-500 underline hover:text-red-700"
                           >
                             change category
                           </button>
@@ -551,7 +596,11 @@ export default function Home() {
                                 // send English text to backend for matching
                                 sendMessageWithText(q.en);
                               }}
-                              className="text-xs px-3 py-1 rounded-full bg-white border border-gray-300 hover:bg-blue-50 text-gray-800 text-left"
+                              className={`text-xs px-3 py-1 rounded-full border transition-colors text-left ${
+                                darkMode 
+                                  ? 'bg-gray-700 border-gray-600 hover:bg-red-900 hover:border-red-700 text-gray-200' 
+                                  : 'bg-white border-gray-300 hover:bg-red-50 hover:border-red-300 text-gray-800'
+                              }`}
                             >
                               {q[language]}
                             </button>
@@ -567,7 +616,7 @@ export default function Home() {
               {messages.length > 0 && !selectedCategory && (
                 <button
                   onClick={() => setSelectedCategory(null)}
-                  className="mt-2 text-[11px] text-blue-500 underline"
+                  className="mt-2 text-[11px] text-red-500 underline hover:text-red-700"
                 >
                   Ask another question from FAQs
                 </button>
@@ -577,7 +626,11 @@ export default function Home() {
 
           <div className="flex gap-2">
             <input
-              className="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`flex-1 border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors ${
+                darkMode 
+                  ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' 
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+              }`}
               placeholder="Ask about KLH admissions, courses..."
               value={input}
               onChange={e => setInput(e.target.value)}
@@ -585,7 +638,7 @@ export default function Home() {
             />
             <button
               onClick={sendMessage}
-              className="bg-blue-500 text-white px-3 py-2 rounded-xl text-sm hover:bg-blue-600 flex items-center justify-center"
+              className="bg-red-600 text-white px-3 py-2 rounded-xl text-sm hover:bg-red-700 flex items-center justify-center transition-colors"
             >
               <Send size={16} />
             </button>
