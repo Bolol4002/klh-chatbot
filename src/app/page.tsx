@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Send, Download, ArrowLeft, Moon, Sun } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Send, Download, ArrowLeft, Moon, Sun, X, MessageCircle } from 'lucide-react';
 
 type Msg = { role: 'user' | 'bot'; content: string };
 
@@ -317,16 +317,27 @@ export default function Home() {
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const sendMessageWithText = async (text: string) => {
     const userMsg: Msg = { role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
+    setIsLoading(true);
 
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: text, language }), // add language
+        body: JSON.stringify({ question: text, language }),
       });
 
       const data = await res.json();
@@ -336,6 +347,8 @@ export default function Home() {
         ...prev,
         { role: 'bot', content: 'Error talking to server. Try again.' },
       ]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -348,300 +361,343 @@ export default function Home() {
 
   return (
     <>
+      {/* Floating Toggle Button */}
       <button
         onClick={() => setIsOpen(o => !o)}
-        className="fixed bottom-4 right-4 w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg z-50 text-sm font-semibold hover:bg-red-700 transition-colors"
+        className={`fixed bottom-4 right-4 w-14 h-14 rounded-full bg-gradient-to-br from-red-600 to-red-700 text-white flex items-center justify-center shadow-xl z-50 hover:scale-105 transition-all ${isOpen ? 'rotate-0' : 'rotate-0'}`}
       >
-        KL
+        {isOpen ? <X size={22} /> : <MessageCircle size={22} />}
       </button>
 
+      {/* Chat Widget */}
       {isOpen && (
-        <div className={`fixed bottom-20 right-4 w-full max-w-md rounded-2xl shadow-xl p-4 space-y-3 border z-40 transition-colors duration-300 ${
+        <div className={`fixed bottom-20 right-4 w-[420px] max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-6rem)] rounded-2xl shadow-2xl flex flex-col border z-40 transition-colors duration-300 overflow-hidden ${
           darkMode 
             ? 'bg-gray-900 border-gray-700' 
             : 'bg-white border-gray-200'
         }`}>
-          {/* Header with title and dark mode toggle */}
-          <div className="flex items-center justify-between">
-            <div className="flex-1" />
-            <h1 className={`text-xl font-semibold text-center flex-1 ${
-              darkMode ? 'text-white' : 'text-gray-800'
-            }`}>
-              KLH Chatbot
-            </h1>
-            <div className="flex-1 flex justify-end">
-              <button
-                onClick={() => setDarkMode(d => !d)}
-                className={`p-2 rounded-full transition-colors ${
-                  darkMode 
-                    ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-                title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-              >
-                {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-              </button>
-            </div>
-          </div>
           
-          <div className="flex justify-center gap-2 text-xs mb-1">
+          {/* Header */}
+          <div className={`px-4 py-3 border-b flex items-center justify-between ${
+            darkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-100 bg-gray-50/50'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center text-white font-bold shadow-md">
+                KL
+              </div>
+              <div>
+                <h1 className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  KLH Chatbot
+                </h1>
+                <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {language === 'en' ? 'Ask me anything' : language === 'te' ? 'ఏమైనా అడగండి' : 'कुछ भी पूछें'}
+                </p>
+              </div>
+            </div>
             <button
-              onClick={() => setLanguage('en')}
-              className={language === 'en' ? 'font-semibold text-red-600' : darkMode ? 'text-gray-400' : 'text-gray-500'}
+              onClick={() => setDarkMode(d => !d)}
+              className={`p-2 rounded-lg transition-colors ${
+                darkMode 
+                  ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
             >
-              English
-            </button>
-            <span className={darkMode ? 'text-gray-600' : 'text-gray-300'}>|</span>
-            <button
-              onClick={() => setLanguage('te')}
-              className={language === 'te' ? 'font-semibold text-red-600' : darkMode ? 'text-gray-400' : 'text-gray-500'}
-            >
-              తెలుగు
-            </button>
-            <span className={darkMode ? 'text-gray-600' : 'text-gray-300'}>|</span>
-            <button
-              onClick={() => setLanguage('hi')}
-              className={language === 'hi' ? 'font-semibold text-red-600' : darkMode ? 'text-gray-400' : 'text-gray-500'}
-            >
-              हिन्दी
+              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
           </div>
 
-
-          <div className={`h-80 overflow-y-auto space-y-3 p-2 rounded-xl transition-colors duration-300 ${
-            darkMode ? 'bg-gray-800' : 'bg-gray-50'
+          {/* Language Selector */}
+          <div className={`px-4 py-2 border-b flex items-center gap-2 ${
+            darkMode ? 'border-gray-700 bg-gray-800/30' : 'border-gray-100 bg-gray-50/30'
           }`}>
-            {/* messages */}
+            {[
+              { code: 'en' as const, label: 'English' },
+              { code: 'te' as const, label: 'తెలుగు' },
+              { code: 'hi' as const, label: 'हिन्दी' }
+            ].map(lang => (
+              <button
+                key={lang.code}
+                onClick={() => setLanguage(lang.code)}
+                className={`flex-1 px-3 py-1.5 text-xs rounded-lg transition-all ${
+                  language === lang.code
+                    ? 'bg-red-600 text-white font-medium'
+                    : darkMode 
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {lang.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Chat Content Area */}
+          <div className={`flex-1 overflow-y-auto p-4 space-y-3 ${
+            darkMode ? 'bg-gray-900' : 'bg-white'
+          }`}>
+            {/* Messages */}
             {messages.map((msg, i) => (
               <div
                 key={i}
-                className={`flex ${
-                  msg.role === 'user' ? 'justify-end' : 'justify-start'
-                }`}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-xs px-3 py-2 rounded-2xl text-sm ${
+                  className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
                     msg.role === 'user'
-                      ? 'bg-red-600 text-white rounded-br-none'
+                      ? 'bg-red-600 text-white rounded-br-sm'
                       : darkMode 
-                        ? 'bg-gray-700 text-gray-100 rounded-bl-none'
-                        : 'bg-gray-200 text-gray-900 rounded-bl-none'
+                        ? 'bg-gray-800 text-gray-100 rounded-bl-sm border border-gray-700'
+                        : 'bg-gray-100 text-gray-800 rounded-bl-sm'
                   }`}
                 >
                   {msg.content}
                 </div>
               </div>
             ))}
+            
+            {/* Loading indicator */}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className={`px-4 py-3 rounded-2xl rounded-bl-sm ${
+                  darkMode ? 'bg-gray-800' : 'bg-gray-100'
+                }`}>
+                  <div className="flex gap-1.5">
+                    <span className={`w-2 h-2 rounded-full animate-bounce ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} style={{ animationDelay: '0ms' }}></span>
+                    <span className={`w-2 h-2 rounded-full animate-bounce ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} style={{ animationDelay: '150ms' }}></span>
+                    <span className={`w-2 h-2 rounded-full animate-bounce ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} style={{ animationDelay: '300ms' }}></span>
+                  </div>
+                </div>
+              </div>
+            )}
 
-            {/* FAQ area */}
-            <div className="space-y-2">
-              {/* step 1: category chips */}
-              {!selectedCategory && (
-                <div>
-                  <p className={`text-xs font-semibold mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Choose a category
-                  </p>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {FAQ_CATEGORIES.map(cat => (
+            {/* FAQ Categories */}
+            {!selectedCategory && (
+              <div className="space-y-3">
+                <p className={`text-xs font-semibold uppercase tracking-wide ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  {language === 'en' ? 'Choose a topic' : language === 'te' ? 'ఒక టాపిక్ ఎంచుకోండి' : 'एक विषय चुनें'}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {FAQ_CATEGORIES.map(cat => (
+                    <button
+                      key={cat.key}
+                      onClick={() => {
+                        setSelectedCategory(cat.key);
+                        setSelectedSubcategory(null);
+                        setSelectedCourse(null);
+                      }}
+                      className={`p-3 rounded-xl text-left text-sm font-medium transition-all hover:scale-[1.02] ${
+                        darkMode 
+                          ? 'bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700' 
+                          : 'bg-gray-50 hover:bg-red-50 hover:border-red-200 text-gray-700 border border-gray-200'
+                      }`}
+                    >
+                      {cat.labels[language]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Browse Courses Flow */}
+            {selectedCategory === 'browse-courses' && (
+              <div className="space-y-3">
+                {/* Back & Title */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (selectedCourse) {
+                        setSelectedCourse(null);
+                      } else if (selectedSubcategory) {
+                        setSelectedSubcategory(null);
+                      } else {
+                        setSelectedCategory(null);
+                      }
+                    }}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
+                      darkMode 
+                        ? 'bg-gray-800 text-red-400 hover:bg-gray-700' 
+                        : 'bg-red-50 text-red-600 hover:bg-red-100'
+                    }`}
+                  >
+                    <ArrowLeft size={14} />
+                    {language === 'en' ? 'Back' : language === 'te' ? 'వెనుకకు' : 'वापस'}
+                  </button>
+                  <span className={`text-sm font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {selectedCourse
+                      ? (() => {
+                          const subcat = COURSE_DATA.find(s => s.key === selectedSubcategory);
+                          const course = subcat?.courses.find(c => c.key === selectedCourse);
+                          return course?.name[language] || '';
+                        })()
+                      : selectedSubcategory
+                      ? COURSE_DATA.find(s => s.key === selectedSubcategory)?.label[language]
+                      : FAQ_CATEGORIES.find(c => c.key === 'browse-courses')?.labels[language]}
+                  </span>
+                </div>
+
+                {/* Subcategories (UG Courses / Certifications) */}
+                {!selectedSubcategory && (
+                  <div className="grid grid-cols-1 gap-2">
+                    {COURSE_DATA.map(subcat => (
                       <button
-                        key={cat.key}
-                        onClick={() => {
-                          setSelectedCategory(cat.key);
-                          setSelectedSubcategory(null);
-                          setSelectedCourse(null);
-                        }}
-                        className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                        key={subcat.key}
+                        onClick={() => setSelectedSubcategory(subcat.key)}
+                        className={`p-4 rounded-xl text-left transition-all hover:scale-[1.01] ${
                           darkMode 
-                            ? 'bg-gray-700 border-gray-600 hover:bg-red-900 hover:border-red-700 text-gray-200' 
-                            : 'bg-white border-gray-300 hover:bg-red-50 hover:border-red-300 text-gray-800'
+                            ? 'bg-gray-800 hover:bg-gray-700 border border-gray-700' 
+                            : 'bg-gray-50 hover:bg-red-50 border border-gray-200 hover:border-red-200'
                         }`}
                       >
-                        {cat.labels[language]}
+                        <div className={`font-semibold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                          {subcat.label[language]}
+                        </div>
+                        <div className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {subcat.courses.length} {language === 'en' ? 'courses' : language === 'te' ? 'కోర్సులు' : 'कोर्स'}
+                        </div>
                       </button>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Browse Courses Flow */}
-              {selectedCategory === 'browse-courses' && (
-                <div>
-                  {/* Back button */}
-                  <div className="flex items-center gap-2 mb-2">
+                {/* Courses in selected subcategory */}
+                {selectedSubcategory && !selectedCourse && (
+                  <div className="grid grid-cols-1 gap-2">
+                    {COURSE_DATA.find(s => s.key === selectedSubcategory)?.courses.map(course => (
+                      <button
+                        key={course.key}
+                        onClick={() => setSelectedCourse(course.key)}
+                        className={`p-3 rounded-xl text-left transition-all hover:scale-[1.01] ${
+                          darkMode 
+                            ? 'bg-gray-800 hover:bg-gray-700 border border-gray-700' 
+                            : 'bg-gray-50 hover:bg-red-50 border border-gray-200 hover:border-red-200'
+                        }`}
+                      >
+                        <div className={`font-medium text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                          {course.name[language]}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Course Details */}
+                {selectedCourse && (
+                  <div className={`rounded-xl p-4 ${
+                    darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-gray-50 border border-gray-200'
+                  }`}>
+                    {(() => {
+                      const subcat = COURSE_DATA.find(s => s.key === selectedSubcategory);
+                      const course = subcat?.courses.find(c => c.key === selectedCourse);
+                      if (!course) return null;
+
+                      return (
+                        <>
+                          <div className={`inline-block px-2 py-0.5 rounded text-xs font-medium mb-2 ${
+                            darkMode ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'
+                          }`}>
+                            {subcat?.label[language]}
+                          </div>
+                          <p className={`text-sm leading-relaxed mb-4 ${
+                            darkMode ? 'text-gray-300' : 'text-gray-600'
+                          }`}>
+                            {course.description[language]}
+                          </p>
+                          <a
+                            href={course.brochureUrl}
+                            download
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+                          >
+                            <Download size={16} />
+                            {language === 'en' ? 'Download Brochure' : language === 'te' ? 'బ్రోచర్ డౌన్‌లోడ్' : 'ब्रोशर डाउनलोड'}
+                          </a>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* FAQ Questions for selected category */}
+            {selectedCategory && selectedCategory !== 'browse-courses' && (
+              <div className="space-y-3">
+                {/* Back & Title */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
                     <button
-                      onClick={() => {
-                        if (selectedCourse) {
-                          setSelectedCourse(null);
-                        } else if (selectedSubcategory) {
-                          setSelectedSubcategory(null);
-                        } else {
-                          setSelectedCategory(null);
-                        }
-                      }}
-                      className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700"
+                      onClick={() => setSelectedCategory(null)}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
+                        darkMode 
+                          ? 'bg-gray-800 text-red-400 hover:bg-gray-700' 
+                          : 'bg-red-50 text-red-600 hover:bg-red-100'
+                      }`}
                     >
                       <ArrowLeft size={14} />
-                      Back
+                      {language === 'en' ? 'Back' : language === 'te' ? 'వెనుకకు' : 'वापस'}
                     </button>
-                    <p className={`text-xs font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {selectedCourse
-                        ? (() => {
-                            const subcat = COURSE_DATA.find(s => s.key === selectedSubcategory);
-                            const course = subcat?.courses.find(c => c.key === selectedCourse);
-                            return course?.name[language] || '';
-                          })()
-                        : selectedSubcategory
-                        ? COURSE_DATA.find(s => s.key === selectedSubcategory)?.label[language]
-                        : 'Browse Courses'}
-                    </p>
+                    <span className={`text-sm font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      {FAQ_CATEGORIES.find(c => c.key === selectedCategory)?.labels[language]}
+                    </span>
                   </div>
-
-                  {/* Step 1: Show subcategories (UG Courses / Certifications) */}
-                  {!selectedSubcategory && (
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {COURSE_DATA.map(subcat => (
-                        <button
-                          key={subcat.key}
-                          onClick={() => setSelectedSubcategory(subcat.key)}
-                          className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-                            darkMode 
-                              ? 'bg-gray-700 border-gray-600 hover:bg-red-900 hover:border-red-700 text-gray-200' 
-                              : 'bg-white border-gray-300 hover:bg-red-50 hover:border-red-300 text-gray-800'
-                          }`}
-                        >
-                          {subcat.label[language]}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Step 2: Show courses in selected subcategory */}
-                  {selectedSubcategory && !selectedCourse && (
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {COURSE_DATA.find(s => s.key === selectedSubcategory)?.courses.map(course => (
-                        <button
-                          key={course.key}
-                          onClick={() => setSelectedCourse(course.key)}
-                          className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-                            darkMode 
-                              ? 'bg-gray-700 border-gray-600 hover:bg-red-900 hover:border-red-700 text-gray-200' 
-                              : 'bg-white border-gray-300 hover:bg-red-50 hover:border-red-300 text-gray-800'
-                          }`}
-                        >
-                          {course.name[language]}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Step 3: Show course details with download brochure button */}
-                  {selectedCourse && (
-                    <div className={`rounded-lg p-3 border transition-colors ${
-                      darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
-                    }`}>
-                      {(() => {
-                        const subcat = COURSE_DATA.find(s => s.key === selectedSubcategory);
-                        const course = subcat?.courses.find(c => c.key === selectedCourse);
-                        if (!course) return null;
-
-                        return (
-                          <>
-                            <p className={`text-sm mb-3 leading-relaxed ${
-                              darkMode ? 'text-gray-200' : 'text-gray-700'
-                            }`}>
-                              {course.description[language]}
-                            </p>
-                            <a
-                              href={course.brochureUrl}
-                              download
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-xs rounded-lg hover:bg-red-700 transition-colors"
-                            >
-                              <Download size={14} />
-                              Download Brochure
-                            </a>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  )}
                 </div>
-              )}
 
-              {/* step 2: questions in selected category (for non-browse-courses categories) */}
-              {selectedCategory && selectedCategory !== 'browse-courses' && (
-                <div>
-                  {(() => {
-                    const cat = FAQ_CATEGORIES.find(c => c.key === selectedCategory);
-                    if (!cat) return null;
-
-                    return (
-                      <>
-                        <div className="flex items-center justify-between mb-1">
-                          <p className={`text-xs font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {cat.labels[language]}
-                          </p>
-                          <button
-                            onClick={() => setSelectedCategory(null)}
-                            className="text-[10px] text-red-500 underline hover:text-red-700"
-                          >
-                            change category
-                          </button>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {cat.questions.map(q => (
-                            <button
-                              key={q.key}
-                              onClick={() => {
-                                // send English text to backend for matching
-                                sendMessageWithText(q.en);
-                              }}
-                              className={`text-xs px-3 py-1 rounded-full border transition-colors text-left ${
-                                darkMode 
-                                  ? 'bg-gray-700 border-gray-600 hover:bg-red-900 hover:border-red-700 text-gray-200' 
-                                  : 'bg-white border-gray-300 hover:bg-red-50 hover:border-red-300 text-gray-800'
-                              }`}
-                            >
-                              {q[language]}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    );
-                  })()}
+                {/* Questions Grid */}
+                <div className="grid grid-cols-1 gap-2">
+                  {FAQ_CATEGORIES.find(c => c.key === selectedCategory)?.questions.map(q => (
+                    <button
+                      key={q.key}
+                      onClick={() => sendMessageWithText(q.en)}
+                      className={`p-3 rounded-xl text-left text-sm transition-all hover:scale-[1.01] ${
+                        darkMode 
+                          ? 'bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700' 
+                          : 'bg-gray-50 hover:bg-red-50 text-gray-700 border border-gray-200 hover:border-red-200'
+                      }`}
+                    >
+                      {q[language]}
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* helper button – visible once there is some history and no category open */}
-              {messages.length > 0 && !selectedCategory && (
-                <button
-                  onClick={() => setSelectedCategory(null)}
-                  className="mt-2 text-[11px] text-red-500 underline hover:text-red-700"
-                >
-                  Ask another question from FAQs
-                </button>
-              )}
-            </div>
+            {/* Helper to go back to FAQs */}
+            {messages.length > 0 && !selectedCategory && (
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className={`text-xs font-medium underline ${darkMode ? 'text-red-400' : 'text-red-600'}`}
+              >
+                {language === 'en' ? 'Browse more topics' : language === 'te' ? 'మరిన్ని టాపిక్స్ చూడండి' : 'और विषय देखें'}
+              </button>
+            )}
+            
+            <div ref={messagesEndRef} />
           </div>
 
-          <div className="flex gap-2">
-            <input
-              className={`flex-1 border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors ${
-                darkMode 
-                  ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' 
-                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-              }`}
-              placeholder="Ask about KLH admissions, courses..."
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && sendMessage()}
-            />
-            <button
-              onClick={sendMessage}
-              className="bg-red-600 text-white px-3 py-2 rounded-xl text-sm hover:bg-red-700 flex items-center justify-center transition-colors"
-            >
-              <Send size={16} />
-            </button>
+          {/* Input Area */}
+          <div className={`p-3 border-t ${
+            darkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-100 bg-gray-50/50'
+          }`}>
+            <div className="flex gap-2">
+              <input
+                className={`flex-1 border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 transition-all ${
+                  darkMode 
+                    ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' 
+                    : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+                }`}
+                placeholder={language === 'en' ? 'Type your question...' : language === 'te' ? 'మీ ప్రశ్న టైప్ చేయండి...' : 'अपना प्रश्न टाइप करें...'}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !isLoading && sendMessage()}
+                disabled={isLoading}
+              />
+              <button
+                onClick={sendMessage}
+                disabled={isLoading || !input.trim()}
+                className="bg-red-600 text-white px-4 py-2.5 rounded-xl hover:bg-red-700 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Send size={18} />
+              </button>
+            </div>
           </div>
         </div>
       )}
