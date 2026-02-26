@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Download, ArrowLeft, Moon, Sun, X, MessageCircle } from 'lucide-react';
+import { Send, Download, ArrowLeft, Moon, Sun, X, MessageCircle, Trash2, Copy, Check, Search, GraduationCap, BookOpen, DollarSign, Building, Briefcase, Users, Star } from 'lucide-react';
 
-type Msg = { role: 'user' | 'bot'; content: string };
+type Msg = { role: 'user' | 'bot'; content: string; timestamp: Date; relatedQuestions?: string[] };
 
 type CourseItem = {
   key: string;
@@ -16,6 +16,48 @@ type CourseSubcategory = {
   key: string;
   label: { en: string; te: string; hi: string };
   courses: CourseItem[];
+};
+
+// Category icons mapping
+const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+  'admissions': <GraduationCap size={16} />,
+  'browse-courses': <BookOpen size={16} />,
+  'fees': <DollarSign size={16} />,
+  'hostel-transport': <Building size={16} />,
+  'placements': <Briefcase size={16} />,
+  'campus-life': <Users size={16} />,
+};
+
+// Popular questions (most asked)
+const POPULAR_QUESTIONS = [
+  'how-admissions',
+  'fee-structure',
+  'how-placements',
+  'hostel-available',
+];
+
+// Related questions mapping
+const RELATED_QUESTIONS: Record<string, string[]> = {
+  'how-admissions': ['which-exams', 'btech-eligibility', 'lateral-entry'],
+  'which-exams': ['how-admissions', 'btech-eligibility'],
+  'btech-eligibility': ['how-admissions', 'lateral-entry'],
+  'lateral-entry': ['how-admissions', 'btech-eligibility'],
+  'fee-structure': ['scholarships', 'hostel-fee', 'nri-mgmt'],
+  'scholarships': ['fee-structure', 'nri-mgmt'],
+  'hostel-fee': ['fee-structure', 'hostel-available'],
+  'nri-mgmt': ['fee-structure', 'scholarships'],
+  'hostel-available': ['hostel-rules', 'hostel-fee', 'bus-facility'],
+  'hostel-rules': ['hostel-available', 'bus-facility'],
+  'bus-facility': ['hostel-available', 'distance-city'],
+  'distance-city': ['bus-facility', 'hostel-available'],
+  'how-placements': ['companies-visit', 'avg-highest-package', 'internships-support'],
+  'companies-visit': ['how-placements', 'avg-highest-package'],
+  'internships-support': ['how-placements', 'companies-visit'],
+  'avg-highest-package': ['how-placements', 'companies-visit'],
+  'clubs-activities': ['fests', 'labs-library'],
+  'fests': ['clubs-activities', 'daily-schedule'],
+  'labs-library': ['clubs-activities', 'daily-schedule'],
+  'daily-schedule': ['labs-library', 'fests'],
 };
 
 const COURSE_DATA: CourseSubcategory[] = [
@@ -318,7 +360,28 @@ export default function Home() {
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [lastQuestionKey, setLastQuestionKey] = useState<string | null>(null);
+  const [showBrowseTopics, setShowBrowseTopics] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load preferences from localStorage
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('klh-darkMode');
+    const savedLanguage = localStorage.getItem('klh-language');
+    if (savedDarkMode !== null) setDarkMode(JSON.parse(savedDarkMode));
+    if (savedLanguage) setLanguage(savedLanguage as 'en' | 'te' | 'hi');
+  }, []);
+
+  // Save preferences to localStorage
+  useEffect(() => {
+    localStorage.setItem('klh-darkMode', JSON.stringify(darkMode));
+  }, [darkMode]);
+
+  useEffect(() => {
+    localStorage.setItem('klh-language', language);
+  }, [language]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -328,10 +391,59 @@ export default function Home() {
     scrollToBottom();
   }, [messages]);
 
-  const sendMessageWithText = async (text: string) => {
-    const userMsg: Msg = { role: 'user', content: text };
+  // Format timestamp
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Copy to clipboard
+  const copyToClipboard = async (text: string, index: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  // Clear chat
+  const clearChat = () => {
+    setMessages([]);
+    setLastQuestionKey(null);
+  };
+
+  // Get all questions for search
+  const getAllQuestions = () => {
+    return FAQ_CATEGORIES.flatMap(cat => 
+      cat.questions?.map(q => ({ ...q, category: cat.key, categoryLabel: cat.labels })) || []
+    );
+  };
+
+  // Filter questions by search
+  const filteredQuestions = searchQuery.trim() 
+    ? getAllQuestions().filter(q => 
+        q.en.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        q.te.includes(searchQuery) ||
+        q.hi.includes(searchQuery)
+      )
+    : [];
+
+  // Get related questions for quick replies
+  const getRelatedQuestions = (questionKey: string) => {
+    const relatedKeys = RELATED_QUESTIONS[questionKey] || [];
+    const allQuestions = getAllQuestions();
+    return relatedKeys
+      .map(key => allQuestions.find(q => q.key === key))
+      .filter(Boolean)
+      .slice(0, 3);
+  };
+
+  const sendMessageWithText = async (text: string, questionKey?: string) => {
+    const userMsg: Msg = { role: 'user', content: text, timestamp: new Date() };
     setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
+    if (questionKey) setLastQuestionKey(questionKey);
 
     try {
       const res = await fetch('/api/chat', {
@@ -341,11 +453,17 @@ export default function Home() {
       });
 
       const data = await res.json();
-      setMessages(prev => [...prev, { role: 'bot', content: data.answer }]);
+      const relatedQuestions = questionKey ? getRelatedQuestions(questionKey).map(q => q?.en || '') : [];
+      setMessages(prev => [...prev, { 
+        role: 'bot', 
+        content: data.answer, 
+        timestamp: new Date(),
+        relatedQuestions: relatedQuestions.length > 0 ? relatedQuestions : undefined
+      }]);
     } catch {
       setMessages(prev => [
         ...prev,
-        { role: 'bot', content: 'Error talking to server. Try again.' },
+        { role: 'bot', content: 'Error talking to server. Try again.', timestamp: new Date() },
       ]);
     } finally {
       setIsLoading(false);
@@ -356,6 +474,7 @@ export default function Home() {
     if (!input.trim()) return;
     const text = input;
     setInput('');
+    setSearchQuery('');
     await sendMessageWithText(text);
   };
 
@@ -364,14 +483,14 @@ export default function Home() {
       {/* Floating Toggle Button */}
       <button
         onClick={() => setIsOpen(o => !o)}
-        className={`fixed bottom-4 right-4 w-14 h-14 rounded-full bg-gradient-to-br from-red-600 to-red-700 text-white flex items-center justify-center shadow-xl z-50 hover:scale-105 transition-all ${isOpen ? 'rotate-0' : 'rotate-0'}`}
+        className={`fixed bottom-4 right-4 w-14 h-14 rounded-full bg-gradient-to-br from-red-600 to-red-700 text-white flex items-center justify-center shadow-xl z-50 hover:scale-105 transition-all duration-300 ${isOpen ? 'rotate-0' : 'rotate-0'}`}
       >
         {isOpen ? <X size={22} /> : <MessageCircle size={22} />}
       </button>
 
       {/* Chat Widget */}
       {isOpen && (
-        <div className={`fixed bottom-20 right-4 w-[420px] max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-6rem)] rounded-2xl shadow-2xl flex flex-col border z-40 transition-colors duration-300 overflow-hidden ${
+        <div className={`fixed bottom-20 right-4 w-[420px] max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-6rem)] rounded-2xl shadow-2xl flex flex-col border z-40 overflow-hidden animate-slideUp ${
           darkMode 
             ? 'bg-gray-900 border-gray-700' 
             : 'bg-white border-gray-200'
@@ -394,16 +513,31 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setDarkMode(d => !d)}
-              className={`p-2 rounded-lg transition-colors ${
-                darkMode 
-                  ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
+            <div className="flex items-center gap-1">
+              {messages.length > 0 && (
+                <button
+                  onClick={clearChat}
+                  className={`p-2 rounded-lg transition-colors ${
+                    darkMode 
+                      ? 'text-gray-400 hover:bg-gray-700 hover:text-red-400' 
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-red-500'
+                  }`}
+                  title={language === 'en' ? 'Clear chat' : language === 'te' ? 'చాట్ క్లియర్' : 'चैट साफ़ करें'}
+                >
+                  <Trash2 size={18} />
+                </button>
+              )}
+              <button
+                onClick={() => setDarkMode(d => !d)}
+                className={`p-2 rounded-lg transition-colors ${
+                  darkMode 
+                    ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+            </div>
           </div>
 
           {/* Language Selector */}
@@ -439,42 +573,183 @@ export default function Home() {
             {messages.map((msg, i) => (
               <div
                 key={i}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
               >
-                <div
-                  className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-red-600 text-white rounded-br-sm'
-                      : darkMode 
-                        ? 'bg-gray-800 text-gray-100 rounded-bl-sm border border-gray-700'
-                        : 'bg-gray-100 text-gray-800 rounded-bl-sm'
-                  }`}
-                >
-                  {msg.content}
+                {/* Bot Avatar */}
+                {msg.role === 'bot' && (
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center text-white text-xs font-bold mr-2 flex-shrink-0 mt-1">
+                    KL
+                  </div>
+                )}
+                <div className="flex flex-col max-w-[80%]">
+                  <div
+                    className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed relative group ${
+                      msg.role === 'user'
+                        ? 'bg-red-600 text-white rounded-br-sm'
+                        : darkMode 
+                          ? 'bg-gray-800 text-gray-100 rounded-bl-sm border border-gray-700'
+                          : 'bg-gray-100 text-gray-800 rounded-bl-sm'
+                    }`}
+                  >
+                    {msg.content}
+                    {/* Copy button for bot messages */}
+                    {msg.role === 'bot' && (
+                      <button
+                        onClick={() => copyToClipboard(msg.content, i)}
+                        className={`absolute -right-8 top-1/2 -translate-y-1/2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${
+                          darkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500'
+                        }`}
+                        title={language === 'en' ? 'Copy' : language === 'te' ? 'కాపీ' : 'कॉपी'}
+                      >
+                        {copiedIndex === i ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                      </button>
+                    )}
+                  </div>
+                  {/* Timestamp */}
+                  <span className={`text-[10px] mt-1 ${msg.role === 'user' ? 'text-right' : ''} ${
+                    darkMode ? 'text-gray-500' : 'text-gray-400'
+                  }`}>
+                    {formatTime(msg.timestamp)}
+                  </span>
+                  {/* Quick Reply Chips - Related Questions */}
+                  {msg.role === 'bot' && msg.relatedQuestions && msg.relatedQuestions.length > 0 && i === messages.length - 1 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <span className={`text-[10px] w-full mb-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {language === 'en' ? 'Related:' : language === 'te' ? 'సంబంధిత:' : 'संबंधित:'}
+                      </span>
+                      {msg.relatedQuestions.map((q, idx) => {
+                        const questionObj = getAllQuestions().find(qObj => qObj.en === q);
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => sendMessageWithText(q, questionObj?.key)}
+                            className={`text-[11px] px-2.5 py-1 rounded-full transition-all ${
+                              darkMode 
+                                ? 'bg-gray-800 text-red-400 hover:bg-gray-700 border border-gray-700' 
+                                : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                            }`}
+                          >
+                            {q.length > 35 ? q.slice(0, 35) + '...' : q}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
             
-            {/* Loading indicator */}
+            {/* Loading indicator with text */}
             {isLoading && (
-              <div className="flex justify-start">
+              <div className="flex justify-start animate-fadeIn">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center text-white text-xs font-bold mr-2 flex-shrink-0">
+                  KL
+                </div>
                 <div className={`px-4 py-3 rounded-2xl rounded-bl-sm ${
-                  darkMode ? 'bg-gray-800' : 'bg-gray-100'
+                  darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-gray-100'
                 }`}>
-                  <div className="flex gap-1.5">
-                    <span className={`w-2 h-2 rounded-full animate-bounce ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} style={{ animationDelay: '0ms' }}></span>
-                    <span className={`w-2 h-2 rounded-full animate-bounce ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} style={{ animationDelay: '150ms' }}></span>
-                    <span className={`w-2 h-2 rounded-full animate-bounce ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} style={{ animationDelay: '300ms' }}></span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      <span className={`w-1.5 h-1.5 rounded-full animate-bounce ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} style={{ animationDelay: '0ms' }}></span>
+                      <span className={`w-1.5 h-1.5 rounded-full animate-bounce ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} style={{ animationDelay: '150ms' }}></span>
+                      <span className={`w-1.5 h-1.5 rounded-full animate-bounce ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} style={{ animationDelay: '300ms' }}></span>
+                    </div>
+                    <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {language === 'en' ? 'KLH Bot is typing...' : language === 'te' ? 'KLH Bot టైప్ చేస్తోంది...' : 'KLH Bot टाइप कर रहा है...'}
+                    </span>
                   </div>
                 </div>
               </div>
             )}
+            
+            {/* Scroll anchor - placed right after messages */}
+            <div ref={messagesEndRef} />
 
-            {/* FAQ Categories */}
-            {!selectedCategory && (
-              <div className="space-y-3">
+            {/* Search Bar - only show when no messages */}
+            {!selectedCategory && messages.length === 0 && (
+              <div className="relative">
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${
+                  darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <Search size={16} className={darkMode ? 'text-gray-500' : 'text-gray-400'} />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder={language === 'en' ? 'Search questions...' : language === 'te' ? 'ప్రశ్నలు వెతుకు...' : 'प्रश्न खोजें...'}
+                    className={`flex-1 bg-transparent text-sm outline-none ${
+                      darkMode ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'
+                    }`}
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery('')} className={darkMode ? 'text-gray-500' : 'text-gray-400'}>
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                
+                {/* Search Results */}
+                {filteredQuestions.length > 0 && (
+                  <div className={`absolute top-full left-0 right-0 mt-1 rounded-xl border shadow-lg max-h-48 overflow-y-auto z-10 ${
+                    darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                  }`}>
+                    {filteredQuestions.map(q => (
+                      <button
+                        key={q.key}
+                        onClick={() => {
+                          sendMessageWithText(q.en, q.key);
+                          setSearchQuery('');
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${
+                          darkMode ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'
+                        }`}
+                      >
+                        <span className={darkMode ? 'text-gray-500' : 'text-gray-400'}>
+                          {CATEGORY_ICONS[q.category]}
+                        </span>
+                        {q[language]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Popular Questions */}
+            {!selectedCategory && !searchQuery && messages.length === 0 && (
+              <div className="space-y-2 animate-fadeIn">
+                <p className={`text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5 ${darkMode ? 'text-yellow-500' : 'text-yellow-600'}`}>
+                  <Star size={12} />
+                  {language === 'en' ? 'Popular Questions' : language === 'te' ? 'ప్రసిద్ధ ప్రశ్నలు' : 'लोकप्रिय प्रश्न'}
+                </p>
+                <div className="grid grid-cols-1 gap-1.5">
+                  {POPULAR_QUESTIONS.map(key => {
+                    const q = getAllQuestions().find(q => q.key === key);
+                    if (!q) return null;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => sendMessageWithText(q.en, q.key)}
+                        className={`p-2.5 rounded-xl text-left text-sm transition-all hover:scale-[1.01] flex items-center gap-2 ${
+                          darkMode 
+                            ? 'bg-yellow-900/20 hover:bg-yellow-900/30 text-yellow-200 border border-yellow-900/50' 
+                            : 'bg-yellow-50 hover:bg-yellow-100 text-yellow-800 border border-yellow-200'
+                        }`}
+                      >
+                        <Star size={12} className={darkMode ? 'text-yellow-500' : 'text-yellow-600'} />
+                        {q[language]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* FAQ Categories - only show when no messages */}
+            {!selectedCategory && !searchQuery && messages.length === 0 && (
+              <div className="space-y-3 animate-fadeIn">
                 <p className={`text-xs font-semibold uppercase tracking-wide ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                  {language === 'en' ? 'Choose a topic' : language === 'te' ? 'ఒక టాపిక్ ఎంచుకోండి' : 'एक विषय चुनें'}
+                  {language === 'en' ? 'Browse by topic' : language === 'te' ? 'టాపిక్ ద్వారా చూడండి' : 'विषय के अनुसार देखें'}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   {FAQ_CATEGORIES.map(cat => (
@@ -485,12 +760,15 @@ export default function Home() {
                         setSelectedSubcategory(null);
                         setSelectedCourse(null);
                       }}
-                      className={`p-3 rounded-xl text-left text-sm font-medium transition-all hover:scale-[1.02] ${
+                      className={`p-3 rounded-xl text-left text-sm font-medium transition-all hover:scale-[1.02] flex items-center gap-2 ${
                         darkMode 
                           ? 'bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700' 
                           : 'bg-gray-50 hover:bg-red-50 hover:border-red-200 text-gray-700 border border-gray-200'
                       }`}
                     >
+                      <span className={darkMode ? 'text-red-400' : 'text-red-600'}>
+                        {CATEGORY_ICONS[cat.key] || <MessageCircle size={16} />}
+                      </span>
                       {cat.labels[language]}
                     </button>
                   ))}
@@ -511,6 +789,7 @@ export default function Home() {
                         setSelectedSubcategory(null);
                       } else {
                         setSelectedCategory(null);
+                        if (messages.length > 0) setShowBrowseTopics(true);
                       }
                     }}
                     className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
@@ -625,7 +904,10 @@ export default function Home() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => setSelectedCategory(null)}
+                      onClick={() => {
+                        setSelectedCategory(null);
+                        if (messages.length > 0) setShowBrowseTopics(true);
+                      }}
                       className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
                         darkMode 
                           ? 'bg-gray-800 text-red-400 hover:bg-gray-700' 
@@ -646,7 +928,7 @@ export default function Home() {
                   {FAQ_CATEGORIES.find(c => c.key === selectedCategory)?.questions.map(q => (
                     <button
                       key={q.key}
-                      onClick={() => sendMessageWithText(q.en)}
+                      onClick={() => sendMessageWithText(q.en, q.key)}
                       className={`p-3 rounded-xl text-left text-sm transition-all hover:scale-[1.01] ${
                         darkMode 
                           ? 'bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700' 
@@ -660,17 +942,55 @@ export default function Home() {
               </div>
             )}
 
-            {/* Helper to go back to FAQs */}
-            {messages.length > 0 && !selectedCategory && (
+            {/* Browse Topics Section - shown when user clicks Browse more topics */}
+            {messages.length > 0 && !selectedCategory && showBrowseTopics && (
+              <div className="space-y-3 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <p className={`text-xs font-semibold uppercase tracking-wide ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {language === 'en' ? 'Browse by topic' : language === 'te' ? 'టాపిక్ ద్వారా చూడండి' : 'विषय के अनुसार देखें'}
+                  </p>
+                  <button
+                    onClick={() => setShowBrowseTopics(false)}
+                    className={`text-xs ${darkMode ? 'text-gray-500 hover:text-gray-400' : 'text-gray-400 hover:text-gray-500'}`}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {FAQ_CATEGORIES.map(cat => (
+                    <button
+                      key={cat.key}
+                      onClick={() => {
+                        setSelectedCategory(cat.key);
+                        setSelectedSubcategory(null);
+                        setSelectedCourse(null);
+                        setShowBrowseTopics(false);
+                      }}
+                      className={`p-3 rounded-xl text-left text-sm font-medium transition-all hover:scale-[1.02] flex items-center gap-2 ${
+                        darkMode 
+                          ? 'bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700' 
+                          : 'bg-gray-50 hover:bg-red-50 hover:border-red-200 text-gray-700 border border-gray-200'
+                      }`}
+                    >
+                      <span className={darkMode ? 'text-red-400' : 'text-red-600'}>
+                        {CATEGORY_ICONS[cat.key] || <MessageCircle size={16} />}
+                      </span>
+                      {cat.labels[language]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Helper to toggle browse topics */}
+            {messages.length > 0 && !selectedCategory && !showBrowseTopics && (
               <button
-                onClick={() => setSelectedCategory(null)}
+                onClick={() => setShowBrowseTopics(true)}
                 className={`text-xs font-medium underline ${darkMode ? 'text-red-400' : 'text-red-600'}`}
               >
                 {language === 'en' ? 'Browse more topics' : language === 'te' ? 'మరిన్ని టాపిక్స్ చూడండి' : 'और विषय देखें'}
               </button>
             )}
-            
-            <div ref={messagesEndRef} />
           </div>
 
           {/* Input Area */}
